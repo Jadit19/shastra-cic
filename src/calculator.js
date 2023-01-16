@@ -63,11 +63,47 @@ const calculateECEF = (vector, theta) => {
   return [x, y, z];
 };
 
+const calculateLLH = (ecefVector) => {
+  const x = ecefVector[0];
+  const y = ecefVector[1];
+  const z = ecefVector[2];
+
+  const a = 6378137.0
+  const f = 1.0 / 298.257223563
+  const b = a - f*a;
+  const e = Math.sqrt(Math.pow(a,2) - Math.pow(b,2)) / a;
+  const clambda = Math.atan2(y, x);
+  const p = Math.sqrt(x*x+y*y);
+  let hOld = 0.0;
+
+  let theta = Math.atan2(z, p*(1.0-e*e));
+  let cs = cos(theta);
+  let sn = sin(theta);
+  let N = (a*a)/(Math.sqrt(a*a*cs*cs + b*b*sn*sn));
+  let h = p/cs - N;
+
+  while (Math.abs(h-hOld) > 1e-6){
+    hOld = h;
+    theta = Math.atan2(z, p*(1-e*e*N/(N+h)));
+    cs = cos(theta);
+    sn = sin(theta);
+    N = a*a / (Math.sqrt(a*a*cs*cs + b*b*sn*sn));
+    h = p/cs - N;
+  };
+
+  return {
+    "longitude": Math.round(clambda * 180 / Math.PI * 1000) / 1000,
+    "latitude": Math.round(theta * 180 / Math.PI * 1000) / 1000,
+    "height": h
+  }
+};
+
 export const calculate = (params) => {
   const eciVector = calculateECI(params);
   const lst = calcLST(params);
   const theta = 2 * lst / 23.9344696 * Math.PI;
   const ecefVector = calculateECEF(eciVector, theta);
+  const llh = calculateLLH(ecefVector);
 
-  return ecefVector;
+  return llh;
 };

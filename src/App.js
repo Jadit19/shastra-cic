@@ -17,7 +17,7 @@ const App = () => {
     periapsis: 0,
     time: dayjs(Date().toString())
   });
-  const [ecefVector, setEcefVector] = useState(null);
+  const [llh, setLLH] = useState(null);
 
   const inputStyle = {
     marginBottom: '20px',
@@ -42,12 +42,13 @@ const App = () => {
       periapsis: 0,
       time: dayjs(Date().toString())
     });
+    setLLH(null);
   };
 
   const handleSubmit = (event) => {
     event.preventDefault();
     const answer = calculate(params);
-    setEcefVector(answer);
+    setLLH(answer);
   };
 
   return (
@@ -86,15 +87,32 @@ const App = () => {
         </div>
       </form>
 
-        <br />
+      <br />
+      <hr style={{ width: '100%', color: 'rgba(0,0,0,0.6)' }} />
 
-      <div className='answer'>The ECEF Vector is:&nbsp;
-        {
-          ecefVector === null
-            ? <span>not defined yet. Waiting for Submit.</span>
-            : <span>{ ecefVector[0] }, { ecefVector[1] }, { ecefVector[2] }</span>
-        }
-      </div>
+      {
+        llh === null
+          ? <div></div>
+          :
+          <table>
+            <tbody>
+              <tr>
+                <th>Location in GCS</th>
+                <th>Value</th>
+              </tr>
+              <tr>
+                <td>Longitude</td>
+                <td>{ llh.longitude }</td>
+              </tr>
+              <tr>
+                <td>Latitude</td>
+                <td>{ llh.latitude }</td>
+              </tr>
+            </tbody>
+          </table>
+      }
+
+      
     </div>
   );
 };
