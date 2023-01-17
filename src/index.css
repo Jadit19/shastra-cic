@@ -18,8 +18,14 @@ form {
   padding: 20px;
 }
 
+.quat {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .btn__container {
-  margin-top: 20px;
+  margin-top: -10px;
   display: flex;
   align-items: center;
   justify-content: space-between;

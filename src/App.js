@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-import { TextField, Button } from '@mui/material';
+import { TextField, Button, FormControlLabel, Checkbox } from '@mui/material';
 
 import { Stack } from '@mui/system';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -31,6 +31,7 @@ const App = () => {
   };
   
   const [coordinates, setCoordinates] = useState(null);
+  const [acceptQuaternions, setAcceptQuaternions] = useState(false);
   const [params, setParams] = useState({
     sma: 0,
     inclination: 0,
@@ -39,6 +40,12 @@ const App = () => {
     anomaly: 0,
     periapsis: 0,
     time: dayjs(Date().toString())
+  });
+  const [quaternions, setQuaternions] = useState({
+    w: 0,
+    x: 0,
+    y: 0,
+    z: 0
   });
 
   const handleChange = (event) => {
@@ -57,8 +64,23 @@ const App = () => {
     });
   };
 
+  const handleQuaternionChange = (event) => {
+    const { name, value } = event.target;
+    setQuaternions({
+      ...quaternions,
+      [name]: value
+    });
+  };
+
   const handleReset = () => {
     setCoordinates(null);
+    setAcceptQuaternions(false);
+    setQuaternions({
+      w: 0,
+      x: 0,
+      y: 0,
+      z: 0
+    });
     setParams({
       sma: 0,
       inclination: 0,
@@ -108,10 +130,28 @@ const App = () => {
                 </Stack>
               </LocalizationProvider>
             </div>
+            
+            <FormControlLabel style={{ paddingTop: '10px', paddingBottom: '20px' }} control={<Checkbox value={acceptQuaternions} onClick={() => { setAcceptQuaternions(!acceptQuaternions); }} />} label="Accept Quaternions" />
+            
+            {
+              acceptQuaternions === false ? null :
+              <div style={{ marginBottom: '30px' }}>
+                <div className='quat'>
+                  <TextField required={acceptQuaternions} style={{ width: '100%', marginBottom: '20px', marginRight: '7px' }} type='number' variant='outlined' label='W Quaternion' name='w' value={quaternions.w} onChange={handleQuaternionChange} />
+                  <TextField required={acceptQuaternions} style={{ width: '100%', marginBottom: '20px', marginLeft: '7px' }} type='number' variant='outlined' label='X Quaternion' name='x' value={quaternions.x} onChange={handleQuaternionChange} />
+                </div>
+                <div className='quat'>
+                  <TextField required={acceptQuaternions} style={{ width: '100%', marginRight: '7px' }} type='number' variant='outlined' label='Y Quaternion' name='y' value={quaternions.y} onChange={handleQuaternionChange} />
+                  <TextField required={acceptQuaternions} style={{ width: '100%', marginLeft: '7px' }} type='number' variant='outlined' label='Z Quaternion' name='z' value={quaternions.z} onChange={handleQuaternionChange} />
+                </div>
+              </div>
+            }
+
             <div className='btn__container'>
               <Button variant='outlined' type='reset'>Reset</Button>
               <Button variant='contained' type='submit'>Submit</Button>
             </div>
+
           </form>
         </div>
 
