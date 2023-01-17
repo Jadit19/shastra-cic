@@ -92,18 +92,44 @@ const calculateLLH = (ecefVector) => {
   };
 
   return {
-    "longitude": Math.round(clambda * 180 / Math.PI * 1000) / 1000,
-    "latitude": Math.round(theta * 180 / Math.PI * 1000) / 1000,
-    "height": h
+    "lon": (clambda * 180 / Math.PI),
+    "lat": (theta * 180 / Math.PI),
+    "h": h
   }
 };
 
-export const calculate = (params) => {
+const calcRPY = (quat) => {
+  const { w, x, y, z } = quat;
+  
+  const srcp = 2 * (w*x + y*z);
+  const crcp = 1 - 2 * (x*x + y*y);
+  const roll = Math.atan2(srcp, crcp);
+
+  const sp = Math.sqrt(1 + 2*(w*y-x*z));
+  const cp = Math.sqrt(1 - 2*(w*y-x*z));
+  const pitch = 2 * Math.atan2(sp, cp) - Math.PI/2;
+
+  const sycp = 2 * (w*z + x*y);
+  const cycp = 1 - 2 * (y*y + z*z);
+  const yaw = Math.atan2(sycp, cycp);
+
+  return { roll, pitch, yaw };
+};
+
+export const calculate = (params, acceptQuaternions, quat) => {
   const eciVector = calculateECI(params);
   const lst = calcLST(params);
   const theta = 2 * lst / 23.9344696 * Math.PI;
   const ecefVector = calculateECEF(eciVector, theta);
-  const llh = calculateLLH(ecefVector);
+  const { lon, lat, h } = calculateLLH(ecefVector);
 
-  return llh;
+  if (acceptQuaternions === false){
+    return {
+      "longitude": Math.round(lon*1000)/1000,
+      "latitude": Math.round(lat*1000)/1000,
+      "height": h
+    };
+  };
+
+  const { roll, pitch, yaw } = calcRPY(quat);
 };

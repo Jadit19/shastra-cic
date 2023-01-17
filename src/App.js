@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 import { TextField, Button, FormControlLabel, Checkbox } from '@mui/material';
 
@@ -30,22 +30,26 @@ const App = () => {
     width: '100%'
   };
   
+  useEffect(() => {
+    document.querySelectorAll('svg')[1].setAttribute('viewBox', '0 100 800 400');
+  }, []);
+
   const [coordinates, setCoordinates] = useState(null);
   const [acceptQuaternions, setAcceptQuaternions] = useState(false);
   const [params, setParams] = useState({
-    sma: 0,
-    inclination: 0,
-    raan: 0,
+    sma: '',
+    inclination: '',
+    raan: '',
     eccentricity: 0,
-    anomaly: 0,
-    periapsis: 0,
+    anomaly: '',
+    periapsis: '',
     time: dayjs(Date().toString())
   });
   const [quaternions, setQuaternions] = useState({
-    w: 0,
-    x: 0,
-    y: 0,
-    z: 0
+    w: '',
+    x: '',
+    y: '',
+    z: ''
   });
 
   const handleChange = (event) => {
@@ -76,25 +80,25 @@ const App = () => {
     setCoordinates(null);
     setAcceptQuaternions(false);
     setQuaternions({
-      w: 0,
-      x: 0,
-      y: 0,
-      z: 0
+      w: '',
+      x: '',
+      y: '',
+      z: ''
     });
     setParams({
-      sma: 0,
-      inclination: 0,
-      raan: 0,
+      sma: '',
+      inclination: '',
+      raan: '',
       eccentricity: 0,
-      anomaly: 0,
-      periapsis: 0,
+      anomaly: '',
+      periapsis: '',
       time: dayjs(Date().toString())
     });
   };
 
   const handleSubmit = (event) => {
     event.preventDefault();
-    const newCoordinates = calculate(params);
+    const newCoordinates = calculate(params, acceptQuaternions, quaternions);
     setCoordinates(newCoordinates);
   };
 
@@ -131,11 +135,11 @@ const App = () => {
               </LocalizationProvider>
             </div>
             
-            <FormControlLabel style={{ paddingTop: '10px', paddingBottom: '20px' }} control={<Checkbox value={acceptQuaternions} onClick={() => { setAcceptQuaternions(!acceptQuaternions); }} />} label="Accept Quaternions" />
+            <FormControlLabel style={{ paddingTop: '10px', paddingBottom: '10px' }} control={<Checkbox value={acceptQuaternions} onClick={() => { setAcceptQuaternions(!acceptQuaternions); }} />} label="Input Camera Orientation" />
             
             {
               acceptQuaternions === false ? null :
-              <div style={{ marginBottom: '30px' }}>
+              <div style={{ marginBottom: '20px' }}>
                 <div className='quat'>
                   <TextField required={acceptQuaternions} style={{ width: '100%', marginBottom: '20px', marginRight: '7px' }} type='number' variant='outlined' label='W Quaternion' name='w' value={quaternions.w} onChange={handleQuaternionChange} />
                   <TextField required={acceptQuaternions} style={{ width: '100%', marginBottom: '20px', marginLeft: '7px' }} type='number' variant='outlined' label='X Quaternion' name='x' value={quaternions.x} onChange={handleQuaternionChange} />
