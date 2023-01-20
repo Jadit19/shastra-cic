@@ -10,7 +10,7 @@ const sin = (theta) => {
 
 const unpackParams = (params) => {
   const a = parseFloat(params.sma);
-  const nu = parseFloat(params.anomaly) * Math.PI / 180;
+  const nu = parseFloat(params.trueAnomaly) * Math.PI / 180;
   const i = parseFloat(params.inclination) * Math.PI / 180;
   const OMEGA = parseFloat(params.raan) * Math.PI / 180;
   const omega = parseFloat(params.periapsis) * Math.PI / 180;
@@ -133,3 +133,9 @@ export const calculate = (params, acceptQuaternions, quat) => {
 
   const { roll, pitch, yaw } = calcRPY(quat);
 };
+
+// export const calculateMultiple = (params) => {
+//   const llh = [];
+
+//   for (let i=0; i)
+// };

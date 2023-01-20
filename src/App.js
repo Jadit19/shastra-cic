@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 
-import { TextField, Button, FormControlLabel, Checkbox } from '@mui/material';
-
 import { Stack } from '@mui/system';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { MobileDateTimePicker, LocalizationProvider } from '@mui/x-date-pickers';
+import { TextField, Button, FormControlLabel, Checkbox } from '@mui/material';
 
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
@@ -41,8 +40,10 @@ const App = () => {
     inclination: '',
     raan: '',
     eccentricity: 0,
-    anomaly: '',
+    trueAnomaly: '',
+    meanAnomaly: '',
     periapsis: '',
+    altitude: '',
     time: dayjs(Date().toString())
   });
   const [quaternions, setQuaternions] = useState({
@@ -54,10 +55,50 @@ const App = () => {
 
   const handleChange = (event) => {
     const { name, value } = event.target;
-    setParams({
-      ...params,
-      [name]: value
-    });
+    if (name === 'sma'){
+      const e = params.eccentricity;
+      const taRad = Math.PI * parseFloat(params.trueAnomaly) / 180;
+      const eaRad = 2 * Math.atan2(Math.sqrt(1-e)*Math.sin(taRad/2), Math.sqrt(1+e)*Math.cos(taRad/2));
+      const r = parseFloat(value) * (1 - e*Math.cos(eaRad));
+      const newAltitude = r - 6378137.0;
+      setParams({
+        ...params,
+        altitude: newAltitude,
+        sma: value
+      });
+    } else if (name === 'altitude'){
+      const e = params.eccentricity;
+      const taRad = Math.PI * parseFloat(params.trueAnomaly) / 180;
+      const eaRad = 2 * Math.atan2(Math.sqrt(1-e)*Math.sin(taRad/2), Math.sqrt(1+e)*Math.cos(taRad/2));
+      const newSma = (6378137.0 + parseFloat(value)) / (1 - e*Math.cos(eaRad));
+      setParams({
+        ...params,
+        sma: newSma,
+        altitude: value
+      });
+    } else if (name === 'trueAnomaly'){
+      const e = params.eccentricity;
+      const taRad = Math.PI * parseFloat(value) / 180;
+      const eaRad = 2 * Math.atan2(Math.sqrt(1-e)*Math.sin(taRad/2), Math.sqrt(1+e)*Math.cos(taRad/2));
+      const maRad = eaRad - e*Math.sin(eaRad);
+      setParams({
+        ...params,
+        trueAnomaly: value,
+        meanAnomaly: (maRad*180/Math.PI)
+      });
+    } else if (name === 'meanAnomaly'){
+      const newTrueAnomaly = parseFloat(value) + 2*params.eccentricity*Math.sin(parseFloat(value*Math.PI/180))*180/Math.PI;
+      setParams({
+        ...params,
+        meanAnomaly: value,
+        trueAnomaly: newTrueAnomaly
+      });
+    } else {
+      setParams({
+        ...params,
+        [name]: value
+      });
+    }
   };
 
   const handleTimeChange = (event) => {
@@ -90,8 +131,10 @@ const App = () => {
       inclination: '',
       raan: '',
       eccentricity: 0,
-      anomaly: '',
+      trueAnomaly: '',
+      meanAnomaly: '',
       periapsis: '',
+      altitude: '',
       time: dayjs(Date().toString())
     });
   };
@@ -109,7 +152,6 @@ const App = () => {
 
         <div className='container'>
           <form onReset={handleReset} onSubmit={handleSubmit}>
-            <div className='form__field'><TextField style={inputStyle} type='number' variant='outlined' label='Semi-Major Axis (in m)' name='sma' required value={params.sma} onChange={handleChange} /></div>
             <div className='form__field'><TextField style={inputStyle} type='number' variant='outlined' label='Inclination (in degrees)' name='inclination' required value={params.inclination} onChange={handleChange} /></div>
             <div className='form__field'><TextField style={inputStyle} type='number' variant='outlined' label='RAAN (in degrees)' name='raan' required value={params.raan} onChange={handleChange} /></div>
             <div className='form__field'><TextField style={inputStyle} type='number' variant='outlined' label='Eccentricity' name='eccentricity' required value={params.eccentricity} onChange={handleChange} /></div>
@@ -118,7 +160,18 @@ const App = () => {
                 ? null
                 : <div className='form__field'><TextField style={inputStyle} type='number' variant='outlined' label='Argument of Periapsis (in degrees)' name='periapsis' required value={params.periapsis} onChange={handleChange} /></div>
             }
-            <div className='form__field'><TextField style={inputStyle} type='number' variant='outlined' label='True Anomaly (in degrees)' name='anomaly' required value={params.anomaly} onChange={handleChange} /></div>
+            <div className='form__field'>
+              <div className='quat'>
+                <TextField style={{ marginRight: '7px', width: '100%', marginBottom: '20px' }} type='number' variant='outlined' label='True Anomaly (in degrees)' name='trueAnomaly' required value={params.trueAnomaly} onChange={handleChange} />
+                <TextField style={{ marginLeft: '7px', width: '100%', marginBottom: '20px' }} type='number' variant='outlined' label='Mean Anomaly (in degrees)' name='meanAnomaly' required value={params.meanAnomaly} onChange={handleChange} />
+              </div>
+            </div>
+            <div className='form__field'>
+              <div className='quat'>
+                <TextField style={{ marginRight: '7px', width: '100%', marginBottom: '20px' }} type='number' variant='outlined' label='Semi-Major Axis (in m)' name='sma' required value={params.sma} onChange={handleChange} />
+                <TextField style={{ marginLeft: '7px', width: '100%', marginBottom: '20px' }}  type='number' variant='outlined' label='Altitude (in m)' name='altitude' required value={params.altitude} onChange={handleChange} />
+              </div>
+            </div>
             <div className='form__field'>
               <LocalizationProvider dateAdapter={AdapterDayjs}>
                 <Stack spacing={3}>
@@ -177,6 +230,10 @@ const App = () => {
                   <TableRow>
                     <TableCell>Latitude</TableCell>
                     <TableCell>{ coordinates === null ? 'NA' : coordinates.latitude }</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell>Height</TableCell>
+                    <TableCell>{ coordinates === null ? 'NA' : coordinates.height }</TableCell>
                   </TableRow>
                 </TableBody>
               </Table>
