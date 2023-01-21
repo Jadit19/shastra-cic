@@ -92,8 +92,8 @@ const calculateLLH = (ecefVector) => {
   const z = ecefVector[2];
 
   const a = 6378137.0
-  const f = 1.0 / 298.257223563
-  // const f = 0;
+  // const f = 1.0 / 298.257223563
+  const f = 0;
   const b = a - f*a;
   const e = Math.sqrt(Math.pow(a,2) - Math.pow(b,2)) / a;
   const clambda = Math.atan2(y, x);
