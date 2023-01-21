@@ -14,8 +14,12 @@ const unpackParams = (params) => {
   const nu = parseFloat(params.trueAnomaly) * Math.PI / 180;
   const i = parseFloat(params.inclination) * Math.PI / 180;
   const OMEGA = parseFloat(params.raan) * Math.PI / 180;
-  const omega = parseFloat(params.periapsis) * Math.PI / 180;
   const e = parseFloat(params.eccentricity);
+
+  let omega = 0;
+  if (e > 0){
+    omega = parseFloat(params.periapsis) * Math.PI / 180;
+  };
 
   return { a, e, i, nu, omega, OMEGA };
 };
@@ -89,6 +93,7 @@ const calculateLLH = (ecefVector) => {
 
   const a = 6378137.0
   const f = 1.0 / 298.257223563
+  // const f = 0;
   const b = a - f*a;
   const e = Math.sqrt(Math.pow(a,2) - Math.pow(b,2)) / a;
   const clambda = Math.atan2(y, x);
@@ -119,6 +124,7 @@ const calculateLLH = (ecefVector) => {
 
 export const calculate = (params, acceptQuaternions, quat) => {
   const { a, e, i, nu, omega, OMEGA } = unpackParams(params);
+  console.log()
   const eciVector = calculateECI({ a, e, i, nu, omega, OMEGA });
   const lst = calcLST(params);
   const theta = 2 * lst / 23.9344696 * Math.PI;
@@ -130,14 +136,18 @@ export const calculate = (params, acceptQuaternions, quat) => {
       "satellite": {
         "longitude": Math.round(lon*1000)/1000,
         "latitude": Math.round(lat*1000)/1000,
-        "height": h
+        "height": Math.round(h*1000)/1000
+      },
+      "image": {
+        "longitude": NaN,
+        "latitude": NaN,
       }
     };
   };
 
   const eciCoeff = Math.sqrt(eciVector[0]*eciVector[0] + eciVector[1]*eciVector[1] + eciVector[2]*eciVector[2]);
   const Z = [-eciVector[0]/eciCoeff, -eciVector[1]/eciCoeff, -eciVector[2]/eciCoeff];
-  let Y = [sin(OMEGA)*sin(i), cos(OMEGA)*sin(i), cos(i)];
+  let Y = [sin(OMEGA)*sin(i), -cos(OMEGA)*sin(i), cos(i)];
 
   console.log(Z);
   console.log(Y);
@@ -146,9 +156,11 @@ export const calculate = (params, acceptQuaternions, quat) => {
   const eciVel = calculateECIVel({ a, e, i, nu, omega, OMEGA });
   const sign = dot(X, eciVel);
 
+  console.log(X);
+
   if (sign < 0){
-    X = -X;
-    Y = -Y;
+    X = [-X[0], -X[1], -X[2]];
+    Y = [-Y[0], -Y[1], -Y[2]];
   };
 
   const xRed = [1, 0, 0];
@@ -168,6 +180,9 @@ export const calculate = (params, acceptQuaternions, quat) => {
     [2*(x*z-w*y), 2*(y*z+w*x), 1-2*(x*x+y*y)]
   ];
   const rotVec = multiply(rotVecMat, [0,0,1]);
+
+  console.log(rotVec);
+
   const camVecECI = multiply(rotMat, rotVec);
 
   const x1 = eciVector[0] + 1;
@@ -185,7 +200,7 @@ export const calculate = (params, acceptQuaternions, quat) => {
       "satellite": {
         "longitude": Math.round(lon*1000)/1000,
         "latitude": Math.round(lat*1000)/1000,
-        "height": h
+        "height": Math.round(h*1000)/1000
       },
       "image": {
         "longitude": NaN,
@@ -196,6 +211,7 @@ export const calculate = (params, acceptQuaternions, quat) => {
 
   const t1 = (-B - Math.sqrt(D)) / (2*C);
   const t2 = (-B + Math.sqrt(D)) / (2*C);
+  console.log({ t1, t2 });
   const t = Math.min(Math.abs(t1), Math.abs(t2));
 
   const xImage = eciVector[0]*(1-t) + t*x1;
@@ -209,11 +225,11 @@ export const calculate = (params, acceptQuaternions, quat) => {
     "satellite": {
       "longitude": Math.round(lon*1000)/1000,
       "latitude": Math.round(lat*1000)/1000,
-      "height": h
+      "height": Math.round(h*1000)/1000
     },
     "image": {
       "longitude": Math.round(imageLLH.lon * 1000) / 1000,
-      "latitude": Math.round(imageLLH.lat * 1000) / 100-0
+      "latitude": Math.round(imageLLH.lat * 1000) / 1000
     }
   };
 };
@@ -229,7 +245,7 @@ export const calculateMultiple = (params) => {
   const timePeriod = (2*Math.PI) * (Math.pow(Math.sqrt(a), 3)) / (Math.sqrt(G*Me));
   const iterations = Math.floor(2 * timePeriod / timeJump);
 
-  for (let i=0; i<iterations; i++){
+  for (let j=1; j<80; j++){
     const eciVector = calculateECI({ a, e, i, nu, omega, OMEGA });
     const newDate = new Date(currentUnixTime);
     const lst = getLST(newDate, 0);
@@ -241,7 +257,7 @@ export const calculateMultiple = (params) => {
       "latitude": lat,
       "height": h
     })
-    currentUnixTime += timeJump * 1000;
+    nu += 10 * Math.PI / 180;
   };
 
   return llh;

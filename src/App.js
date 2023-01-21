@@ -30,11 +30,13 @@ const App = () => {
   };
   
   useEffect(() => {
-    document.querySelectorAll('svg')[1].setAttribute('viewBox', '0 100 800 400');
+    document.querySelectorAll('svg')[2].setAttribute('viewBox', '0 100 800 400');
   }, []);
 
   const [coordinates, setCoordinates] = useState(null);
   const [acceptQuaternions, setAcceptQuaternions] = useState(false);
+  const [trajectory, setTrajectory] = useState(null);
+  const [plotTrajectory, setPlotTrajectory] = useState(false);
   const [params, setParams] = useState({
     sma: '',
     inclination: '',
@@ -76,7 +78,6 @@ const App = () => {
         sma: newSma,
         altitude: value
       });
-      console.log(eaRad*180/Math.PI);
     } else if (name === 'trueAnomaly'){
       const e = params.eccentricity;
       const taRad = Math.PI * parseFloat(value) / 180;
@@ -140,12 +141,19 @@ const App = () => {
       altitude: '',
       time: dayjs(Date().toString())
     });
+    setPlotTrajectory(false);
+    setTrajectory(null);
   };
 
   const handleSubmit = (event) => {
     event.preventDefault();
     const newCoordinates = calculate(params, acceptQuaternions, quaternions);
     setCoordinates(newCoordinates);
+    if (plotTrajectory){
+      const newTrajectory = calculateMultiple(params);
+      console.log(newTrajectory);
+      setTrajectory(newTrajectory);
+    }
   };
 
   return (
@@ -207,6 +215,10 @@ const App = () => {
               </div>
             }
 
+            <div className='form__field'>
+              <FormControlLabel style={{ marginTop: '-10px', paddingBottom: '10px' }} control={<Checkbox value={plotTrajectory} onClick={() => { setPlotTrajectory(!plotTrajectory); }} />} label="Plot Trajectory" />
+            </div>
+
             <div className='btn__container'>
               <Button variant='outlined' type='reset'>Reset</Button>
               <Button variant='contained' type='submit'>Submit</Button>
@@ -227,16 +239,24 @@ const App = () => {
                 </TableHead>
                 <TableBody>
                   <TableRow>
-                    <TableCell>Longitude</TableCell>
+                    <TableCell>Satellite Longitude</TableCell>
                     <TableCell>{ coordinates === null ? 'NA' : coordinates.satellite.longitude }</TableCell>
                   </TableRow>
                   <TableRow>
-                    <TableCell>Latitude</TableCell>
+                    <TableCell>Satellite Latitude</TableCell>
                     <TableCell>{ coordinates === null ? 'NA' : coordinates.satellite.latitude }</TableCell>
                   </TableRow>
                   <TableRow>
-                    <TableCell>Height</TableCell>
+                    <TableCell>Satellite Height</TableCell>
                     <TableCell>{ coordinates === null ? 'NA' : coordinates.satellite.height }</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell>Imaging Longitude</TableCell>
+                    <TableCell>{ coordinates === null ? 'NA' : coordinates.image.longitude }</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell>Imaging Latitude</TableCell>
+                    <TableCell>{ coordinates === null ? 'NA' : coordinates.image.latitude }</TableCell>
                   </TableRow>
                 </TableBody>
               </Table>
@@ -254,14 +274,26 @@ const App = () => {
               }
               </Geographies>
               {
+                (plotTrajectory===false) ? null :
+                (trajectory===null || trajectory===undefined) ? null :
+                trajectory.map((traj, idx) => (
+                  <Marker coordinates={[traj.longitude, traj.latitude]} key={idx}>
+                    <circle r={7} fill='green' />
+                  </Marker>
+                ))
+              }
+              {
                 (coordinates===null) ? null :
                   <>
                     <Marker coordinates={[coordinates.satellite.longitude, coordinates.satellite.latitude]}>
                       <circle r={7} fill='blue' />
                     </Marker>
-                    <Marker coordinates={[coordinates.image.longitude, coordinates.image.latitude]}>
-                      <circle r={7} fill='red' />
-                    </Marker>
+                    {
+                      (coordinates.image.longitude===NaN || coordinates.image.latitude===NaN) ? null :
+                        <Marker coordinates={[coordinates.image.longitude, coordinates.image.latitude]}>
+                          <circle r={7} fill='red' />
+                        </Marker>
+                    }
                   </>
               }
             </ComposableMap>
