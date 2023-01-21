@@ -35,8 +35,7 @@ const calcOrbitalPosition = (R, nu) => {
   return [x, y, z];
 };
 
-const calculateECI = (params) => {
-  const { a, e, i, nu, omega, OMEGA } = unpackParams(params);
+const calculateECI = ({ a, e, i, nu, omega, OMEGA }) => {
   const EOmega = calcEOmega(nu, e);
   const R = a * (1-e*cos(EOmega));
   const orbitalPosition = calcOrbitalPosition(R, nu);
@@ -95,7 +94,7 @@ const calculateLLH = (ecefVector) => {
     "lon": (clambda * 180 / Math.PI),
     "lat": (theta * 180 / Math.PI),
     "h": h
-  }
+  };
 };
 
 const calcRPY = (quat) => {
@@ -117,7 +116,8 @@ const calcRPY = (quat) => {
 };
 
 export const calculate = (params, acceptQuaternions, quat) => {
-  const eciVector = calculateECI(params);
+  const { a, e, i, nu, omega, OMEGA } = unpackParams(params);
+  const eciVector = calculateECI({ a, e, i, nu, omega, OMEGA });
   const lst = calcLST(params);
   const theta = 2 * lst / 23.9344696 * Math.PI;
   const ecefVector = calculateECEF(eciVector, theta);
@@ -134,8 +134,31 @@ export const calculate = (params, acceptQuaternions, quat) => {
   const { roll, pitch, yaw } = calcRPY(quat);
 };
 
-// export const calculateMultiple = (params) => {
-//   const llh = [];
+export const calculateMultiple = (params) => {
+  const llh = [];
+  let { a, e, i, nu, omega, OMEGA } = unpackParams(params);
+  let currentUnixTime = params.time.unix();
 
-//   for (let i=0; i)
-// };
+  const G = 6.6743e-11;
+  const Me = 5.972e24;
+  const timeJump = 3 * 60;
+  const timePeriod = (2*Math.PI) * (Math.pow(Math.sqrt(a), 3)) / (Math.sqrt(G*Me));
+  const iterations = Math.floor(2 * timePeriod / timeJump);
+
+  for (let i=0; i<iterations; i++){
+    const eciVector = calculateECI({ a, e, i, nu, omega, OMEGA });
+    const newDate = new Date(currentUnixTime);
+    const lst = getLST(newDate, 0);
+    const theta = 2 * lst / 23.9344696 * Math.PI;
+    const ecefVector = calculateECEF(eciVector, theta);
+    const { lon, lat, h } = calculateLLH(ecefVector);
+    llh.push({
+      "longitude": lon,
+      "latitude": lat,
+      "height": h
+    })
+    currentUnixTime += timeJump * 1000;
+  };
+
+  return llh;
+};

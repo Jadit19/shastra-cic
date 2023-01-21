@@ -17,7 +17,7 @@ import { ComposableMap, Geographies, Geography, Graticule, Marker } from 'react-
 
 import dayjs from 'dayjs';
 
-import { calculate } from './calculator';
+import { calculate, calculateMultiple } from './calculator';
 
 import './index.css';
 
@@ -76,18 +76,21 @@ const App = () => {
         sma: newSma,
         altitude: value
       });
+      console.log(eaRad*180/Math.PI);
     } else if (name === 'trueAnomaly'){
       const e = params.eccentricity;
       const taRad = Math.PI * parseFloat(value) / 180;
-      const eaRad = 2 * Math.atan2(Math.sqrt(1-e)*Math.sin(taRad/2), Math.sqrt(1+e)*Math.cos(taRad/2));
-      const maRad = eaRad - e*Math.sin(eaRad);
+      const maRad = taRad - (2*e*Math.sin(taRad)) + (0.75*e*e+0.125*e*e*e*e)*Math.sin(2*taRad) - (1/3 * e*e*e)*Math.sin(3*taRad) + (5/32 * e*e*e*e)*Math.sin(4*taRad);
       setParams({
         ...params,
         trueAnomaly: value,
         meanAnomaly: (maRad*180/Math.PI)
       });
     } else if (name === 'meanAnomaly'){
-      const newTrueAnomaly = parseFloat(value) + 2*params.eccentricity*Math.sin(parseFloat(value*Math.PI/180))*180/Math.PI;
+      const e = params.eccentricity;
+      const maRad = Math.PI * parseFloat(value) / 180;
+      const taRad = (maRad + (2*e-0.25*e*e*e)*Math.sin(maRad) + 1.25*e*e*Math.sin(2*maRad) + (13/12)*e*e*e*Math.sin(3*maRad));
+      const newTrueAnomaly = taRad * 180 / Math.PI;
       setParams({
         ...params,
         meanAnomaly: value,
@@ -141,7 +144,7 @@ const App = () => {
 
   const handleSubmit = (event) => {
     event.preventDefault();
-    const newCoordinates = calculate(params, acceptQuaternions, quaternions);
+    const newCoordinates = calculateMultiple(params);
     setCoordinates(newCoordinates);
   };
 
@@ -225,15 +228,15 @@ const App = () => {
                 <TableBody>
                   <TableRow>
                     <TableCell>Longitude</TableCell>
-                    <TableCell>{ coordinates === null ? 'NA' : coordinates.longitude }</TableCell>
+                    <TableCell>{ coordinates === null ? 'NA' : coordinates[0].longitude }</TableCell>
                   </TableRow>
                   <TableRow>
                     <TableCell>Latitude</TableCell>
-                    <TableCell>{ coordinates === null ? 'NA' : coordinates.latitude }</TableCell>
+                    <TableCell>{ coordinates === null ? 'NA' : coordinates[0].latitude }</TableCell>
                   </TableRow>
                   <TableRow>
                     <TableCell>Height</TableCell>
-                    <TableCell>{ coordinates === null ? 'NA' : coordinates.height }</TableCell>
+                    <TableCell>{ coordinates === null ? 'NA' : coordinates[0].height }</TableCell>
                   </TableRow>
                 </TableBody>
               </Table>
@@ -252,9 +255,11 @@ const App = () => {
               </Geographies>
               {
                 (coordinates===null) ? null :
-                  <Marker coordinates={[coordinates.longitude, coordinates.latitude]}>
-                    <circle r={7} fill='red' />
-                  </Marker>
+                  coordinates.map((coord, idx) => (
+                    <Marker coordinates={[coord.longitude, coord.latitude]} key={idx}>
+                      <circle r={7} fill='red' />
+                    </Marker>
+                  ))
               }
             </ComposableMap>
           </div>
