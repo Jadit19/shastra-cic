@@ -1,4 +1,5 @@
 import { getLST } from "local-sidereal-time";
+import { dot, cross, multiply } from "mathjs";
 
 const cos = (theta) => {
   return Math.cos(theta);
@@ -43,6 +44,25 @@ const calculateECI = ({ a, e, i, nu, omega, OMEGA }) => {
   const eciX = orbitalPosition[0]*(cos(omega) * cos(OMEGA) - sin(omega) * cos(i) * sin(OMEGA)) - orbitalPosition[1]*(sin(omega) * cos(OMEGA) + cos(omega) * cos(i) * sin(OMEGA));
   const eciY = orbitalPosition[0]*(cos(omega) * sin(OMEGA) + sin(omega) * cos(i) * cos(OMEGA)) + orbitalPosition[1]*(cos(omega) * cos(i) * cos(OMEGA) - sin(omega) * sin(OMEGA));
   const eciZ = orbitalPosition[0] * sin(omega) * sin(i) + orbitalPosition[1] * cos(omega) * sin(i);
+
+  return [eciX, eciY, eciZ];
+};
+
+const calculateECIVel = ({ a, e, i, nu, omega, OMEGA }) => {
+  const EOmega = calcEOmega(nu, e);
+  const R = a * (1-e*cos(EOmega));
+
+  const G = 6.6743e-11;
+  const Me = 5.972e24;
+  const coeff = G*Me*a/R;
+
+  const xVel = -coeff * sin(EOmega);
+  const yVel = coeff * (Math.sqrt(1-e*e)*cos(EOmega));
+  const zVel = 0;
+
+  const eciX = xVel*(cos(omega) * cos(OMEGA) - sin(omega) * cos(i) * sin(OMEGA)) - yVel*(sin(omega) * cos(OMEGA) + cos(omega) * cos(i) * sin(OMEGA));
+  const eciY = xVel*(cos(omega) * sin(OMEGA) + sin(omega) * cos(i) * cos(OMEGA)) + yVel*(cos(omega) * cos(i) * cos(OMEGA) - sin(omega) * sin(OMEGA));
+  const eciZ = xVel * sin(omega) * sin(i) + yVel * cos(omega) * sin(i);
 
   return [eciX, eciY, eciZ];
 };
@@ -97,24 +117,6 @@ const calculateLLH = (ecefVector) => {
   };
 };
 
-const calcRPY = (quat) => {
-  const { w, x, y, z } = quat;
-  
-  const srcp = 2 * (w*x + y*z);
-  const crcp = 1 - 2 * (x*x + y*y);
-  const roll = Math.atan2(srcp, crcp);
-
-  const sp = Math.sqrt(1 + 2*(w*y-x*z));
-  const cp = Math.sqrt(1 - 2*(w*y-x*z));
-  const pitch = 2 * Math.atan2(sp, cp) - Math.PI/2;
-
-  const sycp = 2 * (w*z + x*y);
-  const cycp = 1 - 2 * (y*y + z*z);
-  const yaw = Math.atan2(sycp, cycp);
-
-  return { roll, pitch, yaw };
-};
-
 export const calculate = (params, acceptQuaternions, quat) => {
   const { a, e, i, nu, omega, OMEGA } = unpackParams(params);
   const eciVector = calculateECI({ a, e, i, nu, omega, OMEGA });
@@ -125,13 +127,95 @@ export const calculate = (params, acceptQuaternions, quat) => {
 
   if (acceptQuaternions === false){
     return {
-      "longitude": Math.round(lon*1000)/1000,
-      "latitude": Math.round(lat*1000)/1000,
-      "height": h
+      "satellite": {
+        "longitude": Math.round(lon*1000)/1000,
+        "latitude": Math.round(lat*1000)/1000,
+        "height": h
+      }
     };
   };
 
-  const { roll, pitch, yaw } = calcRPY(quat);
+  const eciCoeff = Math.sqrt(eciVector[0]*eciVector[0] + eciVector[1]*eciVector[1] + eciVector[2]*eciVector[2]);
+  const Z = [-eciVector[0]/eciCoeff, -eciVector[1]/eciCoeff, -eciVector[2]/eciCoeff];
+  let Y = [sin(OMEGA)*sin(i), cos(OMEGA)*sin(i), cos(i)];
+
+  console.log(Z);
+  console.log(Y);
+
+  let X = cross(Y, Z);
+  const eciVel = calculateECIVel({ a, e, i, nu, omega, OMEGA });
+  const sign = dot(X, eciVel);
+
+  if (sign < 0){
+    X = -X;
+    Y = -Y;
+  };
+
+  const xRed = [1, 0, 0];
+  const yRed = [0, 1, 0];
+  const zRed = [0, 0, 1];
+
+  const rotMat = [
+    [dot(X,xRed), dot(Y,xRed), dot(Z,xRed)],
+    [dot(X,yRed), dot(Y,yRed), dot(Z,yRed)],
+    [dot(X,zRed), dot(Y,zRed), dot(Z,zRed)]
+  ];
+
+  const { w, x, y, z } = quat;
+  const rotVecMat = [
+    [1-2*(y*y+z*z), 2*(x*y-z*w), 2*(x*z+w*y)],
+    [2*(x*y+z*w), 1-2*(x*x+z*z), 2*(y*z-w*z)],
+    [2*(x*z-w*y), 2*(y*z+w*x), 1-2*(x*x+y*y)]
+  ];
+  const rotVec = multiply(rotVecMat, [0,0,1]);
+  const camVecECI = multiply(rotMat, rotVec);
+
+  const x1 = eciVector[0] + 1;
+  const y1 = (eciVector[1] + (camVecECI[1]/camVecECI[0]));
+  const z1 = (eciVector[2] + (camVecECI[2]/camVecECI[0]));
+
+  const Re = 6378137.0;
+  const A = (eciVector[0]*eciVector[0]) + (eciVector[1]*eciVector[1]) + (eciVector[2]*eciVector[2]) - Re*Re;
+  const C = Math.pow((eciVector[0]-x1),2) + Math.pow((eciVector[1]-y1),2) + Math.pow((eciVector[2]-z1),2);
+  const B = (x1*x1) + (y1*y1) + (z1*z1) - A - C - Re*Re;
+
+  const D = B*B - 4*A*C;
+  if (D <= 0){
+    return {
+      "satellite": {
+        "longitude": Math.round(lon*1000)/1000,
+        "latitude": Math.round(lat*1000)/1000,
+        "height": h
+      },
+      "image": {
+        "longitude": NaN,
+        "latitude": NaN,
+      }
+    };
+  };
+
+  const t1 = (-B - Math.sqrt(D)) / (2*C);
+  const t2 = (-B + Math.sqrt(D)) / (2*C);
+  const t = Math.min(Math.abs(t1), Math.abs(t2));
+
+  const xImage = eciVector[0]*(1-t) + t*x1;
+  const yImage = eciVector[1]*(1-t) + t*y1;
+  const zImage = eciVector[2]*(1-t) + t*z1;
+
+  const imageECEFVector = calculateECEF([xImage, yImage, zImage], theta);
+  const imageLLH = calculateLLH(imageECEFVector);
+
+  return {
+    "satellite": {
+      "longitude": Math.round(lon*1000)/1000,
+      "latitude": Math.round(lat*1000)/1000,
+      "height": h
+    },
+    "image": {
+      "longitude": Math.round(imageLLH.lon * 1000) / 1000,
+      "latitude": Math.round(imageLLH.lat * 1000) / 100-0
+    }
+  };
 };
 
 export const calculateMultiple = (params) => {

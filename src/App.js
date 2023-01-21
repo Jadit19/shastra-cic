@@ -144,7 +144,7 @@ const App = () => {
 
   const handleSubmit = (event) => {
     event.preventDefault();
-    const newCoordinates = calculateMultiple(params);
+    const newCoordinates = calculate(params, acceptQuaternions, quaternions);
     setCoordinates(newCoordinates);
   };
 
@@ -228,15 +228,15 @@ const App = () => {
                 <TableBody>
                   <TableRow>
                     <TableCell>Longitude</TableCell>
-                    <TableCell>{ coordinates === null ? 'NA' : coordinates[0].longitude }</TableCell>
+                    <TableCell>{ coordinates === null ? 'NA' : coordinates.satellite.longitude }</TableCell>
                   </TableRow>
                   <TableRow>
                     <TableCell>Latitude</TableCell>
-                    <TableCell>{ coordinates === null ? 'NA' : coordinates[0].latitude }</TableCell>
+                    <TableCell>{ coordinates === null ? 'NA' : coordinates.satellite.latitude }</TableCell>
                   </TableRow>
                   <TableRow>
                     <TableCell>Height</TableCell>
-                    <TableCell>{ coordinates === null ? 'NA' : coordinates[0].height }</TableCell>
+                    <TableCell>{ coordinates === null ? 'NA' : coordinates.satellite.height }</TableCell>
                   </TableRow>
                 </TableBody>
               </Table>
@@ -255,11 +255,14 @@ const App = () => {
               </Geographies>
               {
                 (coordinates===null) ? null :
-                  coordinates.map((coord, idx) => (
-                    <Marker coordinates={[coord.longitude, coord.latitude]} key={idx}>
+                  <>
+                    <Marker coordinates={[coordinates.satellite.longitude, coordinates.satellite.latitude]}>
+                      <circle r={7} fill='blue' />
+                    </Marker>
+                    <Marker coordinates={[coordinates.image.longitude, coordinates.image.latitude]}>
                       <circle r={7} fill='red' />
                     </Marker>
-                  ))
+                  </>
               }
             </ComposableMap>
           </div>

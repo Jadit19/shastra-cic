@@ -17,6 +17,7 @@
     "dayjs": "^1.11.7",
     "electron-is-dev": "^2.0.0",
     "local-sidereal-time": "^1.0.4",
+    "mathjs": "^11.5.0",
     "prettier": "^2.8.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
