@@ -297,6 +297,18 @@ const App = () => {
                   </>
               }
             </ComposableMap>
+
+            <div className='marker'>
+              <ul>
+                <li>Satellite Position</li>
+              </ul>
+              <ul>
+                <li>Imaging Position</li>
+              </ul>
+              <ul>
+                <li>Satellite Orbit</li>
+              </ul>
+            </div>
           </div>
         </div>
       </div>
